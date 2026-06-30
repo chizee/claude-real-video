@@ -43,7 +43,7 @@ def main() -> None:
     if r.transcript_path:
         print(f"  transcript: {r.transcript_path}")
     else:
-        print("  transcript: skipped (install the whisper CLI / `pip install openai-whisper` to enable)")
+        print(f"  transcript: {r.transcript_note}")
 
 
 if __name__ == "__main__":

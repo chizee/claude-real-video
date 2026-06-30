@@ -26,6 +26,7 @@ class Result:
     scene_frames: int
     transcript_path: str | None
     manifest_path: str
+    transcript_note: str = ""
 
 
 def fetch_video(src: str, out_dir: str, cookies: str | None = None) -> str:
@@ -61,6 +62,13 @@ def _duration(video: str) -> int:
         return int(float(r.stdout.strip()))
     except (ValueError, AttributeError):
         return 0
+
+
+def _has_audio(video: str) -> bool:
+    """True if the file carries at least one audio stream."""
+    r = _run(["ffprobe", "-v", "error", "-select_streams", "a",
+              "-show_entries", "stream=codec_type", "-of", "csv=p=0", video])
+    return bool(r.stdout.strip())
 
 
 def extract_frames(video: str, frames_dir: str, scene: float, fps_floor: float,
@@ -146,14 +154,26 @@ def process(src: str, out_dir: str, *, scene: float = 0.30, fps_floor: float = 1
     dur = _duration(video)
     scene_n, _ = extract_frames(video, frames_dir, scene, fps_floor, max_frames)
     kept = dedup_frames(frames_dir, dedup_threshold)
-    transcript = transcribe(video, out_dir, lang) if do_transcribe else None
+
+    # Transcribe, but be honest about *why* there's no transcript — a silent video
+    # is not the same as a missing whisper install.
+    transcript = None
+    if not do_transcribe:
+        note = "(skipped: --no-transcribe)"
+    elif not _have("whisper"):
+        note = "(none — install the whisper CLI to enable: pip install openai-whisper)"
+    elif not _has_audio(video):
+        note = "(none — this video has no audio track)"
+    else:
+        transcript = transcribe(video, out_dir, lang)
+        note = transcript if transcript else "(none — transcription failed)"
 
     manifest = os.path.join(out_dir, "MANIFEST.txt")
     lines = [
         f"source: {src}",
         f"duration: {dur}s | frames: {kept} (scene {scene_n} + density floor, deduped)",
         f"frames dir: {frames_dir}",
-        f"transcript: {transcript or '(none — install openai-whisper to enable)'}",
+        f"transcript: {note}",
         "--- transcript ---",
     ]
     if transcript and os.path.exists(transcript):
@@ -162,4 +182,5 @@ def process(src: str, out_dir: str, *, scene: float = 0.30, fps_floor: float = 1
 
     return Result(out_dir=out_dir, video=video, duration=dur, frames_dir=frames_dir,
                   frame_count=kept, scene_frames=scene_n,
-                  transcript_path=transcript, manifest_path=manifest)
+                  transcript_path=transcript, manifest_path=manifest,
+                  transcript_note=note)
