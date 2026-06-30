@@ -24,6 +24,9 @@ def main() -> None:
     ap.add_argument("--no-transcribe", action="store_true", help="Skip audio transcription")
     ap.add_argument("--dedup-threshold", type=int, default=8,
                     help="Frame dedup sensitivity, higher = fewer frames kept (default: 8)")
+    ap.add_argument("--keep-audio", action="store_true",
+                    help="Also save the full original soundtrack (music + speech) as audio.m4a, "
+                         "for models that can listen to audio (Gemini, GPT-4o, ...)")
     args = ap.parse_args()
 
     try:
@@ -32,6 +35,7 @@ def main() -> None:
             scene=args.scene, fps_floor=args.fps_floor, max_frames=args.max_frames,
             lang=args.lang, cookies=args.cookies,
             do_transcribe=not args.no_transcribe, dedup_threshold=args.dedup_threshold,
+            keep_audio=args.keep_audio,
         )
     except Exception as e:  # noqa: BLE001 — surface a clean message to the user
         print(f"error: {e}", file=sys.stderr)
@@ -44,6 +48,8 @@ def main() -> None:
         print(f"  transcript: {r.transcript_path}")
     else:
         print(f"  transcript: {r.transcript_note}")
+    if r.audio_path:
+        print(f"  audio:      {r.audio_path}  (full soundtrack — music + speech)")
 
 
 if __name__ == "__main__":

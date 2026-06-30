@@ -101,6 +101,7 @@ crv "https://..." --cookies cookies.txt
 | `--lang` | `auto` | Whisper language (`en`, `zh`, `auto`, ...) |
 | `--dedup-threshold` | `8` | higher = fewer frames kept |
 | `--no-transcribe` | off | skip audio |
+| `--keep-audio` | off | also save the **full soundtrack** (`audio.m4a`) so audio models can *hear* it |
 | `--cookies` | – | Netscape cookie file for login-gated sources |
 
 ---
@@ -126,11 +127,16 @@ print(r.frame_count, r.transcript_path)
    local file, or an embedded subtitle track), those are used as the transcript —
    faster and more accurate than re-transcribing. Only when there are no subtitles
    does it fall back to **Whisper** on the audio (skipped cleanly if there's no audio).
-6. **Manifest** — `MANIFEST.txt` summarises everything for the model.
+6. **Audio** *(optional, `--keep-audio`)* — save the **full original soundtrack**
+   (`audio.m4a`: music + speech + effects, copied losslessly when possible). The
+   transcript only has the *words*; the audio file lets a model that can listen
+   (Gemini, GPT-4o, …) actually *hear* the music and tone.
+7. **Manifest** — `MANIFEST.txt` summarises everything for the model.
 
-The transcript is plain text the model can read. The tool **doesn't burn subtitles
-into the video** — burning is a presentation choice, not something needed to make a
-video AI-readable.
+So the model can **see** (key frames), **read** (transcript) and — with `--keep-audio` —
+**hear** (full soundtrack) the video. The transcript is plain text any model can read;
+the tool **doesn't burn subtitles into the video** — burning is a presentation choice,
+not something needed to make a video AI-readable.
 
 ---
 

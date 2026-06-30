@@ -28,6 +28,7 @@ class Result:
     transcript_path: str | None
     manifest_path: str
     transcript_note: str = ""
+    audio_path: str | None = None
 
 
 def fetch_video(src: str, out_dir: str, cookies: str | None = None) -> str:
@@ -182,6 +183,24 @@ def existing_subtitles(src: str, video: str, out_dir: str) -> str | None:
     return None
 
 
+def extract_full_audio(video: str, out_dir: str) -> str | None:
+    """Save the complete original soundtrack (music + speech + effects) so an
+    audio-capable model can actually *hear* the video — not just read the words.
+    Copies the stream losslessly when the codec allows, else re-encodes to AAC."""
+    if not _has_audio(video):
+        return None
+    dst = os.path.join(out_dir, "audio.m4a")
+    # try a lossless stream copy first (works for AAC/ALAC sources)
+    _run(["ffmpeg", "-y", "-i", video, "-vn", "-c:a", "copy", dst,
+          "-hide_banner", "-loglevel", "error"])
+    if os.path.exists(dst) and os.path.getsize(dst) > 0:
+        return dst
+    # fallback: re-encode (e.g. opus/vorbis sources) at a high bitrate
+    _run(["ffmpeg", "-y", "-i", video, "-vn", "-c:a", "aac", "-b:a", "192k", dst,
+          "-hide_banner", "-loglevel", "error"])
+    return dst if os.path.exists(dst) and os.path.getsize(dst) > 0 else None
+
+
 def transcribe(video: str, out_dir: str, lang: str | None) -> str | None:
     """Optional: extract audio + run Whisper if the `whisper` CLI is installed."""
     if not _have("whisper"):
@@ -205,7 +224,8 @@ def transcribe(video: str, out_dir: str, lang: str | None) -> str | None:
 
 def process(src: str, out_dir: str, *, scene: float = 0.30, fps_floor: float = 1.0,
             max_frames: int = 150, lang: str | None = "auto", cookies: str | None = None,
-            do_transcribe: bool = True, dedup_threshold: int = 8) -> Result:
+            do_transcribe: bool = True, dedup_threshold: int = 8,
+            keep_audio: bool = False) -> Result:
     os.makedirs(out_dir, exist_ok=True)
     frames_dir = os.path.join(out_dir, "frames")
     video = fetch_video(src, out_dir, cookies=cookies)
@@ -229,14 +249,20 @@ def process(src: str, out_dir: str, *, scene: float = 0.30, fps_floor: float = 1
         transcript = transcribe(video, out_dir, lang)
         note = f"{transcript} (transcribed by whisper)" if transcript else "(none — transcription failed)"
 
+    # Optionally keep the full original soundtrack (music + speech + effects) for
+    # models that can listen to audio directly — the transcript only has the words.
+    audio_path = extract_full_audio(video, out_dir) if keep_audio else None
+
     manifest = os.path.join(out_dir, "MANIFEST.txt")
     lines = [
         f"source: {src}",
         f"duration: {dur}s | frames: {kept} (scene {scene_n} + density floor, deduped)",
         f"frames dir: {frames_dir}",
         f"transcript: {note}",
-        "--- transcript ---",
     ]
+    if keep_audio:
+        lines.append(f"audio: {audio_path or '(none — this video has no audio track)'}")
+    lines.append("--- transcript ---")
     if transcript and os.path.exists(transcript):
         lines.append(open(transcript, encoding="utf-8").read().strip())
     open(manifest, "w", encoding="utf-8").write("\n".join(lines) + "\n")
@@ -244,4 +270,4 @@ def process(src: str, out_dir: str, *, scene: float = 0.30, fps_floor: float = 1
     return Result(out_dir=out_dir, video=video, duration=dur, frames_dir=frames_dir,
                   frame_count=kept, scene_frames=scene_n,
                   transcript_path=transcript, manifest_path=manifest,
-                  transcript_note=note)
+                  transcript_note=note, audio_path=audio_path)
