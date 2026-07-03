@@ -105,6 +105,8 @@ crv "https://..." --cookies cookies.txt
 | `--report` | off | keep dropped frames in `./dropped` + write `report.html` visualising every keep/drop decision |
 | `--no-transcribe` | off | skip audio |
 | `--keep-audio` | off | also save the **full soundtrack** (`audio.m4a`) so audio models can *hear* it |
+| `--why` | – | why you're watching, e.g. `--why "find the pricing strategy"` — written into `MANIFEST.txt` so the model analyses with that lens instead of a generic summary |
+| `--kb` | – | also save the analysis as a dated markdown note into this folder (your Obsidian vault, notes dir, ...) — so it joins your knowledge base instead of dying in `crv-out` |
 | `--cookies` | – | Netscape cookie file for login-gated sources |
 
 ---

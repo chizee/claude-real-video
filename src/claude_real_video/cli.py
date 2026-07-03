@@ -32,6 +32,13 @@ def main() -> None:
     ap.add_argument("--report", action="store_true",
                     help="Keep dropped frames in ./dropped and write report.html "
                          "visualising every keep/drop decision, for tuning the threshold")
+    ap.add_argument("--why", default=None,
+                    help='Why you are watching, e.g. --why "find the pricing strategy" — '
+                         "written into MANIFEST.txt so the model analyses with that lens "
+                         "instead of producing a generic summary")
+    ap.add_argument("--kb", default=None, metavar="DIR",
+                    help="Also save the analysis as a dated markdown note into this "
+                         "knowledge-base folder (e.g. your Obsidian vault)")
     ap.add_argument("--keep-audio", action="store_true",
                     help="Also save the full original soundtrack (music + speech) as audio.m4a, "
                          "for models that can listen to audio (Gemini, GPT-4o, ...)")
@@ -44,6 +51,7 @@ def main() -> None:
             lang=args.lang, cookies=args.cookies,
             do_transcribe=not args.no_transcribe, dedup_threshold=args.dedup_threshold,
             dedup_window=args.dedup_window, keep_audio=args.keep_audio, report=args.report,
+            why=args.why,
         )
     except Exception as e:  # noqa: BLE001 — surface a clean message to the user
         print(f"error: {e}", file=sys.stderr)
@@ -60,6 +68,10 @@ def main() -> None:
         print(f"  transcript: {r.transcript_note}")
     if r.audio_path:
         print(f"  audio:      {r.audio_path}  (full soundtrack — music + speech)")
+    if args.kb:
+        from .core import save_to_kb
+        dest = save_to_kb(args.kb, r.manifest_path, args.source)
+        print(f"  knowledge base: {dest}")
 
 
 if __name__ == "__main__":

@@ -300,10 +300,22 @@ def transcribe(video: str, out_dir: str, lang: str | None) -> str | None:
     return None
 
 
+def save_to_kb(kb_dir: str, manifest_path: str, src: str) -> str:
+    """Copy the analysis into a knowledge-base folder as a dated markdown note,
+    so it lives next to the user's other notes instead of dying in ./crv-out."""
+    import datetime, re as _re
+    os.makedirs(kb_dir, exist_ok=True)
+    slug = _re.sub(r"[^A-Za-z0-9一-鿿]+", "-", os.path.basename(src.rstrip("/")))[:60].strip("-") or "video"
+    dest = os.path.join(kb_dir, f"{datetime.date.today().isoformat()}-{slug}.md")
+    body = open(manifest_path, encoding="utf-8").read()
+    open(dest, "w", encoding="utf-8").write(f"# Video analysis — {src}\n\n```\n{body}\n```\n")
+    return dest
+
+
 def process(src: str, out_dir: str, *, scene: float = 0.30, fps_floor: float = 1.0,
             max_frames: int = 150, lang: str | None = "auto", cookies: str | None = None,
             do_transcribe: bool = True, dedup_threshold: float = 8, dedup_window: int = 4,
-            keep_audio: bool = False, report: bool = False) -> Result:
+            keep_audio: bool = False, report: bool = False, why: str | None = None) -> Result:
     os.makedirs(out_dir, exist_ok=True)
     frames_dir = os.path.join(out_dir, "frames")
     video = fetch_video(src, out_dir, cookies=cookies)
@@ -334,7 +346,14 @@ def process(src: str, out_dir: str, *, scene: float = 0.30, fps_floor: float = 1
     audio_path = extract_full_audio(video, out_dir) if keep_audio else None
 
     manifest = os.path.join(out_dir, "MANIFEST.txt")
-    lines = [
+    lines = []
+    if why:
+        # The reader's job, stated up front: focus the analysis instead of a
+        # wandering summary. This line is for the LLM that reads this manifest.
+        lines += [f"viewing intent: {why}",
+                  "(reader: analyse the frames and transcript with this intent as the lens — "
+                  "surface what serves it first, skip what doesn't)", ""]
+    lines += [
         f"source: {src}",
         f"duration: {dur}s | frames: {kept} (scene-change + density floor, "
         f"deduped from {extracted} extracted)",
