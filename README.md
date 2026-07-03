@@ -165,6 +165,18 @@ not something needed to make a video AI-readable.
   your own, authorised access — don't ship credentials in a repo.
 - Re-running overwrites the output directory.
 
+## crv Pro — understand *how* a video was shot
+
+This free tool tells an LLM **what** is on screen. A stack of keyframes can't tell it **how** the video moves — the camera work and the pacing.
+
+**crv Pro** adds a `--motion` pass on top of everything here:
+
+- **Camera-move classification** — every shot labelled static / pan / tilt / zoom / handheld (optical-flow, verified against ground truth)
+- **Editing rhythm** — shot list, cuts per minute, and how pacing shifts across the video
+- **Action bursts** — high-motion shots get 0.2s-apart frame sequences so the model reads movement, not guesses
+
+All as plain text in the same manifest, still 100% local. One-time $19 → **https://leoaido.com/crv-pro/**
+
 ## License
 
 MIT
