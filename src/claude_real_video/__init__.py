@@ -5,5 +5,5 @@ from a URL (yt-dlp) or a local file.
 """
 from .core import process, Result
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __all__ = ["process", "Result", "__version__"]

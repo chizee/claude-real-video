@@ -300,6 +300,39 @@ def transcribe(video: str, out_dir: str, lang: str | None) -> str | None:
     return None
 
 
+def make_grids(frames_dir: str, out_dir: str, cols: int = 3, rows: int = 3,
+               cell_width: int = 480) -> list[str]:
+    """Tile the kept frames, in order, into contact-sheet grids. A model reading
+    consecutive frames side by side in one image follows motion and progression
+    far better than the same frames seen one at a time."""
+    from PIL import Image, ImageDraw
+    frames = sorted(glob.glob(os.path.join(frames_dir, "*.jpg")))
+    if not frames:
+        return []
+    grids_dir = os.path.join(out_dir, "grids")
+    os.makedirs(grids_dir, exist_ok=True)
+    per = cols * rows
+    sheets = []
+    label_h = 22
+    for gi in range(0, len(frames), per):
+        batch = frames[gi:gi + per]
+        first = Image.open(batch[0])
+        cw = cell_width
+        ch = int(first.height * cw / first.width) + label_h
+        sheet = Image.new("RGB", (cols * cw, rows * ch), "black")
+        draw = ImageDraw.Draw(sheet)
+        for i, f in enumerate(batch):
+            im = Image.open(f)
+            im = im.resize((cw, ch - label_h))
+            x, y = (i % cols) * cw, (i // cols) * ch
+            sheet.paste(im, (x, y + label_h))
+            draw.text((x + 6, y + 4), os.path.basename(f), fill="white")
+        dest = os.path.join(grids_dir, f"grid_{gi // per + 1:02d}.jpg")
+        sheet.save(dest, quality=85)
+        sheets.append(dest)
+    return sheets
+
+
 def save_to_kb(kb_dir: str, manifest_path: str, src: str) -> str:
     """Copy the analysis into a knowledge-base folder as a dated markdown note,
     so it lives next to the user's other notes instead of dying in ./crv-out."""

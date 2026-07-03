@@ -36,6 +36,10 @@ def main() -> None:
                     help='Why you are watching, e.g. --why "find the pricing strategy" — '
                          "written into MANIFEST.txt so the model analyses with that lens "
                          "instead of producing a generic summary")
+    ap.add_argument("--grid", action="store_true",
+                    help="Also tile the kept frames into 3x3 contact sheets (./grids) — "
+                         "consecutive frames side by side help the model follow motion "
+                         "and progression instead of guessing between stills")
     ap.add_argument("--kb", default=None, metavar="DIR",
                     help="Also save the analysis as a dated markdown note into this "
                          "knowledge-base folder (e.g. your Obsidian vault)")
@@ -68,6 +72,10 @@ def main() -> None:
         print(f"  transcript: {r.transcript_note}")
     if r.audio_path:
         print(f"  audio:      {r.audio_path}  (full soundtrack — music + speech)")
+    if args.grid:
+        from .core import make_grids
+        sheets = make_grids(r.frames_dir, r.out_dir)
+        print(f"  grids:      {len(sheets)} contact sheet(s) in {r.out_dir}/grids")
     if args.kb:
         from .core import save_to_kb
         dest = save_to_kb(args.kb, r.manifest_path, args.source)

@@ -10,7 +10,7 @@ samples frames at a **fixed interval** (1 fps by default), so fast cuts slip pas
 `claude-real-video` does it differently, and **locally**: point it at a URL or a
 file, and it pulls the frames that *actually matter* (every scene change, not a
 fixed quota), throws away the near-duplicates, transcribes the audio, and hands
-you a clean folder any LLM can read — on your own machine, nothing uploaded.
+you a clean folder any LLM can read. All the processing happens on your own machine — what gets sent anywhere is only the frames/text *you* choose to paste into an LLM afterwards.
 
 ```bash
 crv "https://www.youtube.com/watch?v=..."
@@ -43,7 +43,7 @@ screencast and under-samples a fast-cut reel. `claude-real-video` is smarter:
 | Static slide (10 min) | ~600 near-identical frames | **collapses to 1** (dedup) |
 | Fast-cut reel | misses frames between samples | catches each visual change |
 | Audio | often ignored | Whisper transcript w/ language detect |
-| Where the video goes | often uploaded to a cloud | **stays on your machine** |
+| Where the processing happens | often in someone's cloud | **on your machine** (you choose what to share with an LLM afterwards) |
 | Input | usually local file only | **URL (yt-dlp) or local file** |
 
 You feed the model *fewer, more meaningful* frames — cheaper context, better
