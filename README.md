@@ -207,6 +207,8 @@ This free tool tells an LLM **what** is on screen. A stack of keyframes can't te
 - **A breakdown report** — hook analysis, pacing curve, camera language, and a rubric your own LLM completes into a full teardown
 - **Three modes** — `--mode watch` (understand the content), `--mode creator` (reverse-engineer the making), `--mode full`
 
+**Recent Pro updates** (July 2026): a music-state timeline (hear the score building, peaking, falling away — with BPM), voice emotion read from the isolated voice instead of the full mix, an interactive `--viewer` dashboard with a clickable synced timeline, and richer gesture narration ("hand raised — right hand, while walking toward frame right").
+
 All as plain text in the same manifest, still 100% local. One-time founder price $19 → **https://leoaido.com/crv-pro/**
 
 ## License
