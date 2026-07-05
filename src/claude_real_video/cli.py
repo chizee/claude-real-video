@@ -21,6 +21,9 @@ def main() -> None:
     ap.add_argument("--lang", default="auto", help="Whisper language, e.g. en / zh / auto (default: auto)")
     ap.add_argument("--cookies", default=None,
                     help="Netscape cookie file for sites that need login (your own, authorised use only)")
+    ap.add_argument("--cookies-from-browser", default=None, metavar="BROWSER",
+                    help="read login cookies straight from your own browser — chrome, safari, "
+                         "firefox or edge. For sites that need login (your own account only)")
     ap.add_argument("--no-transcribe", action="store_true", help="Skip audio transcription")
     ap.add_argument("--whisper-model", default="base",
                     choices=["tiny", "base", "small", "medium", "large"],
@@ -56,7 +59,7 @@ def main() -> None:
         r = process(
             args.source, args.out,
             scene=args.scene, fps_floor=args.fps_floor, max_frames=args.max_frames,
-            lang=args.lang, cookies=args.cookies,
+            lang=args.lang, cookies=args.cookies, cookies_from_browser=args.cookies_from_browser,
             do_transcribe=not args.no_transcribe,
             whisper_model=args.whisper_model, dedup_threshold=args.dedup_threshold,
             dedup_window=args.dedup_window, keep_audio=args.keep_audio, report=args.report,

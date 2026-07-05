@@ -32,7 +32,7 @@ class Result:
     report_path: str | None = None
 
 
-def fetch_video(src: str, out_dir: str, cookies: str | None = None) -> str:
+def fetch_video(src: str, out_dir: str, cookies: str | None = None, cookies_from_browser: str | None = None) -> str:
     """Download via yt-dlp (URL) or copy a local file. cookies is an optional
     Netscape-format cookie file for sites that require login (your own,
     authorised use only)."""
@@ -42,6 +42,8 @@ def fetch_video(src: str, out_dir: str, cookies: str | None = None) -> str:
             raise RuntimeError("yt-dlp not found. Install it: pip install yt-dlp")
         base = ["yt-dlp", src, "-o", dest, "--merge-output-format", "mp4", "--no-warnings", "-q"]
         _run(base)
+        if not os.path.exists(dest) and cookies_from_browser:
+            _run(base + ["--cookies-from-browser", cookies_from_browser])
         if not os.path.exists(dest) and cookies:
             _run(base + ["--cookies", cookies])
         if not os.path.exists(dest):
@@ -348,10 +350,10 @@ def save_to_kb(kb_dir: str, manifest_path: str, src: str) -> str:
 def process(src: str, out_dir: str, *, scene: float = 0.30, fps_floor: float = 1.0,
             max_frames: int = 150, lang: str | None = "auto", cookies: str | None = None,
             do_transcribe: bool = True, dedup_threshold: float = 8, dedup_window: int = 4,
-            keep_audio: bool = False, report: bool = False, why: str | None = None, whisper_model: str = "base") -> Result:
+            keep_audio: bool = False, report: bool = False, why: str | None = None, whisper_model: str = "base", cookies_from_browser: str | None = None) -> Result:
     os.makedirs(out_dir, exist_ok=True)
     frames_dir = os.path.join(out_dir, "frames")
-    video = fetch_video(src, out_dir, cookies=cookies)
+    video = fetch_video(src, out_dir, cookies=cookies, cookies_from_browser=cookies_from_browser)
     dur = _duration(video)
     extracted = extract_frames(video, frames_dir, scene, fps_floor)
     kept, records = dedup_frames(frames_dir, dedup_threshold, dedup_window, max_frames,
