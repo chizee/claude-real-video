@@ -8,6 +8,8 @@
 
 > Same 58-second clip: fixed 1 fps sampling = **58 frames**. crv keeps the **26 that actually differ** — and `--grid` packs them into **3 contact sheets**. Fewer tokens, nothing missed.
 
+> **This free version lets your AI *see* the video.** [crv Pro](https://leoaido.com/crv-pro/) lets it *understand* it — how it was shot (cut rhythm, camera moves) plus a timestamped timeline of what frames can't show: gestures, expressions, voice pitch shifts, emotion, sound events. One-time founder price.
+
 Most AI tools don't really *see* a video. Paste a YouTube link into ChatGPT and it
 reads the **transcript**, not the picture. Claude won't take a video file at all.
 Even Gemini, which *can* read video natively, has to send it up to Google and
@@ -195,13 +197,15 @@ not something needed to make a video AI-readable.
 
 This free tool tells an LLM **what** is on screen. A stack of keyframes can't tell it **how** the video moves — the camera work and the pacing.
 
-**crv Pro** adds a `--motion` pass on top of everything here:
+**crv Pro** adds everything the free version can't hear or feel:
 
 - **Camera-move classification** — every shot labelled static / pan / tilt / zoom / handheld (verified against ground-truth footage)
 - **Editing rhythm** — shot list, cuts per minute, and how pacing shifts across the video
-- **Action bursts** — high-motion shots get 0.2s-apart frame sequences so the model reads movement, not guesses
+- **Perception timeline** — the subtle things frames can't show: gestures and expressions (a smile, a hand raised, pointing), voice pitch rises and pauses, speaker emotion, and non-speech sound events — all timestamped
+- **A breakdown report** — hook analysis, pacing curve, camera language, and a rubric your own LLM completes into a full teardown
+- **Three modes** — `--mode watch` (understand the content), `--mode creator` (reverse-engineer the making), `--mode full`
 
-All as plain text in the same manifest, still 100% local. One-time $19 → **https://leoaido.com/crv-pro/**
+All as plain text in the same manifest, still 100% local. One-time founder price $19 → **https://leoaido.com/crv-pro/**
 
 ## License
 
