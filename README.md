@@ -27,6 +27,8 @@ crv "https://www.youtube.com/watch?v=..."
 
 Then drop the frames + `MANIFEST.txt` into Claude / ChatGPT / Gemini and ask away.
 
+Want to eyeball what the model will see first? Add `--viewer` — it writes a local `viewer.html` (video + keyframe grid + transcript) you can double-click open. No network, no extra installs.
+
 Not doing LLM work? It also works as a **general-purpose video keyframe extractor** —
 scene-change detection + dedup, no ML models to download.
 

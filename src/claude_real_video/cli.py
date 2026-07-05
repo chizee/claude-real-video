@@ -1,5 +1,6 @@
 """Command-line interface for claude-real-video."""
 import argparse
+import os
 import sys
 
 from .core import process
@@ -25,6 +26,9 @@ def main() -> None:
                     help="read login cookies straight from your own browser — chrome, safari, "
                          "firefox or edge. For sites that need login (your own account only)")
     ap.add_argument("--no-transcribe", action="store_true", help="Skip audio transcription")
+    ap.add_argument("--viewer", action="store_true",
+                    help="also write viewer.html — browse the video, keyframes and "
+                         "transcript in one local page (double-click to open)")
     ap.add_argument("--whisper-model", default="base",
                     choices=["tiny", "base", "small", "medium", "large"],
                     help="Whisper model for transcription (default: base — fast; "
@@ -72,6 +76,11 @@ def main() -> None:
     print(f"\n✓ Done → {r.out_dir}")
     print(f"  {r.frame_count} frames  (deduped from {r.extracted_frames} extracted)  in {r.frames_dir}")
     print(f"  manifest:   {r.manifest_path}")
+    if args.viewer:
+        from .viewer import write_viewer
+        vsrc = os.path.join(r.out_dir, "source.mp4")
+        vp = write_viewer(r.out_dir, vsrc if os.path.exists(vsrc) else (args.source if os.path.exists(args.source) else None))
+        print(f"  viewer:     {vp}  (double-click to open)")
     if r.report_path:
         print(f"  report:     {r.report_path}  (open in a browser to tune the threshold)")
     if r.transcript_path:
