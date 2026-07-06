@@ -46,6 +46,16 @@ def write_viewer(out_dir: str, video_path: str | None) -> str:
   .grid img {{ width:100%; display:block }}
   .grid span {{ position:absolute; left:0; bottom:0; right:0; font-size:10px; color:#c9bda3; background:rgba(13,11,7,.75); padding:2px 6px }}
   .tr {{ font-size:13px; line-height:1.7; color:#c9bda3; white-space:pre-wrap; border:1px solid #2a2418; border-radius:12px; padding:16px; background:#14110b; max-height:80vh; overflow:auto }}
+  #lb {{ position:fixed; inset:0; display:none; background:rgba(13,11,7,.93); z-index:50;
+        align-items:center; justify-content:center; flex-direction:column; gap:10px }}
+  #lb.open {{ display:flex }}
+  #lb img {{ max-width:92vw; max-height:84vh; border-radius:10px; border:1px solid #3a3323 }}
+  #lb .cap {{ color:#c9bda3; font-size:12px }}
+  #lb .hint {{ color:#8a7a5f; font-size:11px }}
+  #lb .x {{ position:absolute; top:14px; right:22px; color:#c9bda3; font-size:26px; cursor:pointer }}
+  #lb .nav {{ position:absolute; top:50%; transform:translateY(-50%); font-size:34px; color:#c9bda3;
+             cursor:pointer; padding:20px; user-select:none }}
+  #lb .prev {{ left:6px }} #lb .next {{ right:6px }}
 </style></head><body>
 <header><div class="b">crv viewer</div><div class="r">runs 100% locally · {len(frames)} keyframes</div></header>
 <main>
@@ -59,6 +69,39 @@ def write_viewer(out_dir: str, video_path: str | None) -> str:
     <div class="tr">{html.escape(transcript) or "(no transcript)"}</div>
   </div>
 </main>
+<div id="lb">
+  <div class="x" onclick="lbClose()">&times;</div>
+  <div class="nav prev" onclick="lbStep(-1)">&#8249;</div>
+  <img id="lb-img" alt="">
+  <div class="cap" id="lb-cap"></div>
+  <div class="hint">&larr; &rarr; browse &middot; ESC close &middot; click outside to close</div>
+  <div class="nav next" onclick="lbStep(1)">&#8250;</div>
+</div>
+<script>
+(function () {{
+  var links = Array.prototype.slice.call(document.querySelectorAll(".grid a"));
+  var idx = -1, lb = document.getElementById("lb"),
+      im = document.getElementById("lb-img"), cap = document.getElementById("lb-cap");
+  function show(i) {{
+    idx = (i + links.length) % links.length;
+    im.src = links[idx].getAttribute("href");
+    cap.textContent = links[idx].querySelector("span").textContent + "  (" + (idx + 1) + "/" + links.length + ")";
+    lb.classList.add("open");
+  }}
+  window.lbClose = function () {{ lb.classList.remove("open"); }};
+  window.lbStep = function (d) {{ show(idx + d); }};
+  links.forEach(function (a, i) {{
+    a.addEventListener("click", function (e) {{ e.preventDefault(); show(i); }});
+  }});
+  lb.addEventListener("click", function (e) {{ if (e.target === lb) lbClose(); }});
+  document.addEventListener("keydown", function (e) {{
+    if (!lb.classList.contains("open")) return;
+    if (e.key === "Escape") lbClose();
+    else if (e.key === "ArrowLeft") lbStep(-1);
+    else if (e.key === "ArrowRight") lbStep(1);
+  }});
+}})();
+</script>
 </body></html>
 """
     out = os.path.join(out_dir, "viewer.html")
