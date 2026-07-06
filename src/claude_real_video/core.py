@@ -100,6 +100,72 @@ def extract_frames(video: str, frames_dir: str, scene: float, fps_floor: float) 
     return len(glob.glob(os.path.join(frames_dir, "raw_*.jpg")))
 
 
+def _scene_scores(video: str) -> list[tuple[int, float]]:
+    """One metadata pass: per-frame scene-change score from ffmpeg's scene
+    detector, without extracting anything. Returns [(frame_no, score), ...]."""
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tf:
+        meta = tf.name
+    try:
+        _run(["ffmpeg", "-i", video,
+              "-vf", f"select='gte(scene,0)',metadata=print:file={meta}",
+              "-f", "null", "-", "-hide_banner", "-loglevel", "error"])
+        scores, frame_no = [], None
+        for line in open(meta, encoding="utf-8", errors="ignore"):
+            line = line.strip()
+            if line.startswith("frame:"):
+                try:
+                    frame_no = int(line.split("frame:")[1].split()[0])
+                except (ValueError, IndexError):
+                    frame_no = None
+            elif "lavfi.scene_score=" in line and frame_no is not None:
+                try:
+                    scores.append((frame_no, float(line.split("=")[1])))
+                except ValueError:
+                    pass
+        return scores
+    finally:
+        os.unlink(meta)
+
+
+def extract_frames_adaptive(video: str, frames_dir: str, fps_floor: float,
+                            window_s: float = 2.0, mult: float = 3.0,
+                            min_content: float = 0.04) -> int:
+    """Adaptive extraction for slow-changing content (issue #2): a frame is a
+    keyframe when its scene score exceeds `mult` x the rolling average of the
+    previous `window_s` seconds AND an absolute floor `min_content` — so gradual
+    morphs (squash/stretch, slow pans) that never cross a fixed threshold still
+    register against their own quiet neighbourhood. The fps_floor safety net
+    still guarantees a frame per interval. Falls back to plain extraction when
+    the score pass yields nothing (e.g. single-frame or still videos)."""
+    scores = _scene_scores(video)
+    if not scores:
+        return extract_frames(video, frames_dir, 0.30, fps_floor)
+    fps = _fps(video)
+    win = max(1, round(fps * window_s))
+    every_n = max(1, round(fps * fps_floor))
+    picked, rolling = [], []
+    last_floor = -every_n
+    for i, (n, s) in enumerate(scores):
+        avg = (sum(rolling) / len(rolling)) if rolling else 0.0
+        if (s >= min_content and s >= avg * mult) or (n - last_floor >= every_n):
+            picked.append(n)
+            if n - last_floor >= every_n:
+                last_floor = n
+        rolling.append(s)
+        if len(rolling) > win:
+            rolling.pop(0)
+    if not picked:
+        return extract_frames(video, frames_dir, 0.30, fps_floor)
+    os.makedirs(frames_dir, exist_ok=True)
+    expr = "+".join(f"eq(n,{n})" for n in picked)
+    _run(["ffmpeg", "-i", video,
+          "-vf", f"select='{expr}',scale=640:-1",
+          "-vsync", "vfr", os.path.join(frames_dir, "raw_%05d.jpg"),
+          "-hide_banner", "-loglevel", "error"])
+    return len(glob.glob(os.path.join(frames_dir, "raw_*.jpg")))
+
+
 def dedup_frames(frames_dir: str, threshold: float = 8, window: int = 4,
                  max_frames: int = 150,
                  dropped_dir: str | None = None) -> tuple[int, list[dict]]:
@@ -348,6 +414,7 @@ def save_to_kb(kb_dir: str, manifest_path: str, src: str) -> str:
 
 
 def process(src: str, out_dir: str, *, scene: float = 0.30, fps_floor: float = 1.0,
+            adaptive: bool = False,
             max_frames: int = 150, lang: str | None = "auto", cookies: str | None = None,
             do_transcribe: bool = True, dedup_threshold: float = 8, dedup_window: int = 4,
             keep_audio: bool = False, report: bool = False, why: str | None = None, whisper_model: str = "base", cookies_from_browser: str | None = None) -> Result:
@@ -355,7 +422,8 @@ def process(src: str, out_dir: str, *, scene: float = 0.30, fps_floor: float = 1
     frames_dir = os.path.join(out_dir, "frames")
     video = fetch_video(src, out_dir, cookies=cookies, cookies_from_browser=cookies_from_browser)
     dur = _duration(video)
-    extracted = extract_frames(video, frames_dir, scene, fps_floor)
+    extracted = (extract_frames_adaptive(video, frames_dir, fps_floor)
+                 if adaptive else extract_frames(video, frames_dir, scene, fps_floor))
     kept, records = dedup_frames(frames_dir, dedup_threshold, dedup_window, max_frames,
                                  dropped_dir=os.path.join(out_dir, "dropped") if report else None)
     report_path = write_report(out_dir, records, dedup_threshold, dedup_window) if report else None
