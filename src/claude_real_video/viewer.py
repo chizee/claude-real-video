@@ -56,16 +56,18 @@ def write_viewer(out_dir: str, video_path: str | None) -> str:
   #lb .nav {{ position:absolute; top:50%; transform:translateY(-50%); font-size:34px; color:#c9bda3;
              cursor:pointer; padding:20px; user-select:none }}
   #lb .prev {{ left:6px }} #lb .next {{ right:6px }}
+  .lang a {{ color:#8a7a5f; cursor:pointer; margin-right:6px }}
+  .lang a.on {{ color:#e8b64c }}
 </style></head><body>
-<header><div class="b">crv viewer</div><div class="r">runs 100% locally · {len(frames)} keyframes</div></header>
+<header><div class="b">crv viewer</div><div class="r"><span class="lang"><a data-lang="zh_tw">繁中</a> <a data-lang="zh_cn">简中</a> <a data-lang="en">EN</a></span> <span data-i="local">runs 100% locally</span> · {len(frames)} keyframes</div></header>
 <main>
   <div>
     {video_tag}
-    <h2>KEYFRAMES — what the model will see</h2>
+    <h2 data-i="kf">KEYFRAMES — what the model will see</h2>
     <div class="grid">{cells}</div>
   </div>
   <div>
-    <h2>TRANSCRIPT</h2>
+    <h2 data-i="tr">TRANSCRIPT</h2>
     <div class="tr">{html.escape(transcript) or "(no transcript)"}</div>
   </div>
 </main>
@@ -100,6 +102,27 @@ def write_viewer(out_dir: str, video_path: str | None) -> str:
     else if (e.key === "ArrowLeft") lbStep(-1);
     else if (e.key === "ArrowRight") lbStep(1);
   }});
+}})();
+(function () {{
+  var D = {{
+    zh_tw: {{ local:"全程本機執行", kf:"關鍵幀——模型看到的畫面", tr:"逐字稿", none:"（沒有逐字稿）" }},
+    zh_cn: {{ local:"全程本机运行", kf:"关键帧——模型看到的画面", tr:"逐字稿", none:"（没有逐字稿）" }},
+    en:    {{ local:"runs 100% locally", kf:"KEYFRAMES — what the model will see", tr:"TRANSCRIPT", none:"(no transcript)" }}
+  }};
+  function set(l) {{
+    localStorage.setItem("crv_lang", l);
+    document.querySelectorAll("[data-i]").forEach(function (el) {{ el.textContent = D[l][el.dataset.i]; }});
+    document.querySelectorAll(".lang a").forEach(function (a) {{ a.classList.toggle("on", a.dataset.lang === l); }});
+    var tr = document.querySelector(".tr");
+    if (tr) {{
+      var t = tr.textContent.trim();
+      if (t === "(no transcript)" || t === "（沒有逐字稿）" || t === "（没有逐字稿）") tr.textContent = D[l].none;
+    }}
+  }}
+  document.querySelectorAll(".lang a").forEach(function (a) {{
+    a.addEventListener("click", function () {{ set(a.dataset.lang); }});
+  }});
+  set(localStorage.getItem("crv_lang") || "zh_tw");
 }})();
 </script>
 </body></html>
