@@ -169,7 +169,7 @@ When a user shares a video (URL or file path):
 | `--cookies-from-browser` | — | Read cookies from browser (`chrome`, `safari`, `firefox`, `edge`) |
 | `--no-transcribe` | off | Skip audio transcription |
 | `--viewer` | off | Write a local `viewer.html` |
-| `--whisper-model` | `base` | Whisper model size (`tiny`, `base`, `small`, `medium`, `large`) |
+| `--whisper-model` | `base` | Whisper model size (`tiny`, `base`, `small`, `medium`, `large`, `turbo` — turbo: near large-v2 accuracy, ~8x faster) |
 | `--dedup-threshold` | `8` | % of pixels that must change for a new frame (higher = fewer frames kept) |
 | `--dedup-window` | `4` | Compare against last N kept frames (1 = consecutive-only) |
 | `--report` | off | Keep dropped frames + write `report.html` |

@@ -145,7 +145,7 @@ crv "https://..." --cookies cookies.txt
 | `--adaptive` | off | adaptive scene detection: catches slow morphs (2-3s squash/stretch, gradual pans) a fixed threshold misses, by comparing each frame against its rolling neighbourhood |
 | `--text-anchors` | off | force extra frames at subtitle-cue timestamps (sidecar `.srt`/`.vtt` or embedded track) — for videos where meaning changes faster than pixels; at most one forced frame per second |
 | `--lang` | `auto` | Whisper language (`en`, `zh`, `auto`, ...) |
-| `--whisper-model` | `base` | Whisper model for transcription (`tiny`/`base`/`small`/`medium`/`large` — base is fast; medium/large for tricky audio, they download more and run slower) |
+| `--whisper-model` | `base` | Whisper model for transcription (`tiny`/`base`/`small`/`medium`/`large`/`turbo` — base is fast; **want sharper transcripts? `--whisper-model turbo` is one flag away**: close to large-v2 accuracy at ~8x the speed, one-time 1.6GB download, ~6GB memory) |
 | `--dedup-threshold` | `8` | % of pixels that must change for a frame to count as new; higher = fewer frames |
 | `--dedup-window` | `4` | compare against the last N kept frames — a shot the model already saw doesn't come back after a cutaway (`1` = consecutive-only) |
 | `--report` | off | keep dropped frames in `./dropped` + write `report.html` visualising every keep/drop decision |

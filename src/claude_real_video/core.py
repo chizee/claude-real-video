@@ -495,7 +495,10 @@ def transcribe(video: str, out_dir: str, lang: str | None, model: str = "base") 
         cmd = ["whisper", wav, "--model", model, "--output_format", "all", "--output_dir", out_dir]
         if lang and lang != "auto":
             cmd += ["--language", lang]
-        _run(cmd)
+        res = _run(cmd)
+        if res.returncode != 0:  # don't fail silently — say why (old whisper w/o turbo, OOM, ...)
+            tail = (res.stderr or res.stdout or "").strip().splitlines()[-3:]
+            print("  ! whisper failed (model=%s):\n    %s" % (model, "\n    ".join(tail)))
         jsrc = os.path.join(out_dir, "audio.json")
         if os.path.exists(jsrc):
             _write_transcript_json(out_dir, _segments_from_whisper_json(jsrc))

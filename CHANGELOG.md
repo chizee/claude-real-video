@@ -1,3 +1,7 @@
+## 0.7.3 (2026-07-10)
+- `--whisper-model` now accepts `turbo` (close to large-v2 accuracy at ~8x the speed; needs openai-whisper>=20240930). Default stays `base` for fast first runs; sharper transcripts are one flag away.
+- Transcription failures now print whisper's actual error instead of a silent "(none — transcription failed)".
+
 ## 0.7.2 (2026-07-10)
 - **Safer output directories**: running into a folder that already holds a previous analysis is now refused, so two videos can never mix frames or audio. Pass the new `--overwrite` flag to replace it (only crv's own artifacts are removed). Recommended: one folder per video.
 - **Fail loudly on bad sources**: zero extracted frames now raises a clear error (incomplete download / not a playable video / check ffmpeg) instead of quietly producing an empty result; partial-download leftovers (`.part`/`.ytdl`/`.tmp`) are no longer picked up as the video.

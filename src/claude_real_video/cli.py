@@ -42,9 +42,10 @@ def main() -> None:
                     help="also write viewer.html — browse the video, keyframes and "
                          "transcript in one local page (double-click to open)")
     ap.add_argument("--whisper-model", default="base",
-                    choices=["tiny", "base", "small", "medium", "large"],
+                    choices=["tiny", "base", "small", "medium", "large", "turbo"],
                     help="Whisper model for transcription (default: base — fast; "
-                         "pick medium/large for tricky audio, they download more and run slower)")
+                         "pick turbo for large-v3 accuracy at ~8x large's speed, "
+                         "medium/large also available — bigger models download more)")
     ap.add_argument("--dedup-threshold", type=float, default=8,
                     help="Percent of pixels that must change for a frame to count as new; "
                          "higher = fewer frames kept (default: 8)")
