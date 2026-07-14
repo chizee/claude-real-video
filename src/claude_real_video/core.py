@@ -628,9 +628,42 @@ def extract_full_audio(video: str, out_dir: str) -> str | None:
     return dst if os.path.exists(dst) and os.path.getsize(dst) > 0 else None
 
 
+def _have_faster_whisper() -> bool:
+    import importlib.util
+    return importlib.util.find_spec("faster_whisper") is not None
+
+
+def _transcribe_faster_whisper(wav: str, out_dir: str, lang: str | None, model: str) -> str | None:
+    """In-process transcription via faster-whisper (CTranslate2) — same output
+    files as the CLI path (transcript.txt + transcript.json), several times
+    faster and lighter on RAM. Returns the transcript path, or None so the
+    caller falls back to the `whisper` CLI."""
+    try:
+        from faster_whisper import WhisperModel
+    except ImportError:
+        return None
+    try:
+        m = WhisperModel(model, device="auto", compute_type="auto")
+        seg_iter, _info = m.transcribe(wav, language=(lang if lang and lang != "auto" else None))
+        segs = [{"start": round(s.start, 3), "end": round(s.end, 3), "text": s.text.strip()}
+                for s in seg_iter if s.text.strip()]
+    except Exception as e:  # bad model name, OOM, corrupt audio — CLI may still work
+        print(f"  ! faster-whisper failed (model={model}): {e}")
+        return None
+    if not segs:
+        return None
+    _write_transcript_json(out_dir, segs)
+    dst = os.path.join(out_dir, "transcript.txt")
+    with open(dst, "w", encoding="utf-8") as f:
+        f.write("\n".join(s["text"] for s in segs) + "\n")
+    return dst
+
+
 def transcribe(video: str, out_dir: str, lang: str | None, model: str = "base") -> str | None:
-    """Optional: extract audio + run Whisper if the `whisper` CLI is installed."""
-    if not _have("whisper"):
+    """Optional: extract audio + transcribe. Prefers faster-whisper when the
+    package is installed (pip install 'claude-real-video[fast]'), otherwise
+    shells out to the `whisper` CLI."""
+    if not _have("whisper") and not _have_faster_whisper():
         return None
     # audio.wav is a 16kHz mono *working file* for whisper only — the user-facing
     # keep_audio artifact is audio.m4a (extract_full_audio), so this one is
@@ -641,6 +674,11 @@ def transcribe(video: str, out_dir: str, lang: str | None, model: str = "base") 
     if not os.path.exists(wav):
         return None
     try:
+        fast = _transcribe_faster_whisper(wav, out_dir, lang, model)
+        if fast:
+            return fast
+        if not _have("whisper"):
+            return None
         # json carries per-segment timestamps (saved as transcript.json); txt stays
         # the plain fallback. "all" writes both plus srt/vtt/tsv we clean up.
         cmd = ["whisper", wav, "--model", model, "--output_format", "all", "--output_dir", out_dir]
@@ -783,8 +821,8 @@ def process(src: str, out_dir: str, *, scene: float = 0.30, fps_floor: float = 1
         # Check for audio *before* blaming a missing whisper install — a silent
         # video would otherwise tell the user to go install whisper for nothing.
         note = "(none — this video has no subtitles and no audio track)"
-    elif not _have("whisper"):
-        note = "(none — no existing subtitles; install whisper to transcribe: pip install openai-whisper)"
+    elif not _have("whisper") and not _have_faster_whisper():
+        note = "(none — no existing subtitles; install a transcriber: pip install 'claude-real-video[fast]' or pip install openai-whisper)"
     else:
         transcript = transcribe(video, out_dir, lang, model=whisper_model)
         note = f"{transcript} (transcribed by whisper)" if transcript else "(none — transcription failed)"
