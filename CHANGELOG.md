@@ -1,3 +1,6 @@
+## 0.7.8 (2026-07-15)
+- The end-of-run Pro pointer now shows this run's real numbers (deduped visual-change count and changes/min) instead of a generic line — only when the video actually has them; static or very short videos keep the quiet one-liner. Opt out unchanged: `CRV_NO_HINT=1`.
+
 ## 0.7.7 (2026-07-15)
 - **faster-whisper support — new `[fast]` extra.** `pip install 'claude-real-video[fast]'` and crv automatically transcribes in-process with [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (CTranslate2): same model names, same `transcript.txt` + `transcript.json` output, several times faster and lighter on RAM than the whisper CLI. No new flags — if the package is importable it's used, and any failure falls back to the `whisper` CLI automatically.
 - The "install whisper" hint shown when no transcriber is present now mentions both options.

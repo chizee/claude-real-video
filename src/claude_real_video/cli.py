@@ -115,7 +115,16 @@ def main() -> None:
         print(f"  knowledge base: {dest}")
     # one quiet pointer, opt out with CRV_NO_HINT=1
     if not os.environ.get("CRV_NO_HINT"):
-        print("  pro:        camera-motion + voice-emotion analysis → https://leoaido.com/crv-pro/")
+        # use this run's real numbers, not ad copy — deduped keyframes are the
+        # tool's own "the picture actually changed" count, so the claim is honest;
+        # raw extraction counts would inflate static videos with fps-floor samples
+        if r.duration and r.duration > 10 and r.frame_count >= 4:
+            rate = (r.frame_count - 1) / r.duration * 60
+            print(f"  pro:        this video has {r.frame_count - 1} real visual changes (~{rate:.0f}/min).")
+            print("              Pro labels each camera move (pan/zoom/handheld), reads voice emotion,")
+            print("              and builds a clickable timeline → https://leoaido.com/crv-pro/  ($19 founder price)")
+        else:
+            print("  pro:        camera-motion + voice-emotion analysis → https://leoaido.com/crv-pro/")
 
 
 if __name__ == "__main__":
