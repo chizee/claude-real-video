@@ -42,16 +42,26 @@ Want to eyeball what the model will see first? Add `--viewer` — it writes a lo
 Not doing LLM work? It also works as a **general-purpose video keyframe extractor** —
 scene-change detection + dedup, no ML models to download.
 
-**Using Claude Code?** Install it as a skill so Claude watches videos on its own
-(the `skills/` folder lives in the repo, not in the pip package — clone it first):
+**Using Claude Code — or any coding agent?** One command installs the skill
+(works with Claude Code, Cursor, Codex, Copilot, Gemini CLI and other
+[agentskills.io](https://agentskills.io)-compatible hosts):
 
 ```bash
 pip install "claude-real-video[whisper]"
+npx skills add HUANGCHIHHUNGLeo/claude-real-video
+```
+
+Then just paste a video link into your agent and ask about it.
+
+<details>
+<summary>Manual install (clone + copy)</summary>
+
+```bash
 git clone https://github.com/HUANGCHIHHUNGLeo/claude-real-video.git
 mkdir -p ~/.claude/skills && cp -r claude-real-video/skills/claude-real-video ~/.claude/skills/
 ```
 
-Then just paste a video link into Claude Code and ask about it.
+</details>
 
 **New in 0.3.0** — tell it *why* you're watching, and keep what it finds:
 
