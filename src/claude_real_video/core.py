@@ -904,6 +904,10 @@ def process(src: str, out_dir: str, *, scene: float = 0.30, fps_floor: float = 1
                      "(per-frame source-video timestamps — cite visual evidence with these)")
     if keep_audio:
         lines.append(f"audio: {audio_path or '(none — this video has no audio track)'}")
+    lines.append("(reader: read the transcript below from start to finish BEFORE "
+                 "writing your analysis — sampling lines is only for locating "
+                 "timestamps, never a substitute for reading. The strongest details "
+                 "are often in the tail.)")
     lines.append("--- transcript ---")
     if transcript and os.path.exists(transcript):
         lines.append(open(transcript, encoding="utf-8").read().strip())
