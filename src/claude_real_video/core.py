@@ -55,6 +55,57 @@ def _fmt_ts(sec: float) -> str:
     return f"{h:02d}:{m:02d}:{s:06.3f}"
 
 
+def _fetch_douyin_fallback(src: str, dest: str) -> bool:
+    """Douyin blocks anonymous yt-dlp. The mobile share page still embeds a
+    _ROUTER_DATA JSON carrying a direct play address — resolve the short link,
+    parse the page with a mobile UA, download the first working URL. Returns
+    True when dest holds a plausible video file. (Field-proven 2026-07-17.)"""
+    import json as _json
+    import urllib.request
+
+    ua = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+          "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1")
+
+    def _get(url: str):
+        return urllib.request.urlopen(
+            urllib.request.Request(url, headers={"User-Agent": ua}), timeout=60)
+
+    try:
+        final = _get(src).geturl() if "v.douyin.com" in src else src
+        m = re.search(r"/(?:share/)?video/(\d+)", final)
+        if not m:
+            return False
+        body = _get(f"https://www.iesdouyin.com/share/video/{m.group(1)}/").read().decode("utf-8", "ignore")
+        rd = re.search(r"_ROUTER_DATA\s*=\s*(\{.*?\})\s*</script>", body, re.S)
+        if not rd:
+            return False
+        urls: list[str] = []
+
+        def _walk(o):
+            if isinstance(o, dict):
+                for k, v in o.items():
+                    if k == "play_addr" and isinstance(v, dict):
+                        urls.extend(v.get("url_list") or [])
+                    else:
+                        _walk(v)
+            elif isinstance(o, list):
+                for v in o:
+                    _walk(v)
+
+        _walk(_json.loads(rd.group(1)))
+        for u in urls:
+            try:
+                with _get(u) as r, open(dest, "wb") as f:
+                    shutil.copyfileobj(r, f)
+                if os.path.getsize(dest) > 100_000:  # sanity: not an error page
+                    return True
+            except Exception:
+                continue
+    except Exception:
+        return False
+    return False
+
+
 def fetch_video(src: str, out_dir: str, cookies: str | None = None, cookies_from_browser: str | None = None) -> str:
     """Download via yt-dlp (URL) or copy a local file. cookies is an optional
     Netscape-format cookie file for sites that require login (your own,
@@ -75,6 +126,10 @@ def fetch_video(src: str, out_dir: str, cookies: str | None = None, cookies_from
                     if not h.endswith((".part", ".ytdl", ".tmp"))]
             if hits:
                 dest = hits[0]
+        if not os.path.exists(dest) and "douyin.com" in src:
+            # yt-dlp cannot fetch douyin anonymously; the share-page JSON can
+            if _fetch_douyin_fallback(src, dest):
+                return dest
         if not os.path.exists(dest):
             raise RuntimeError("Download failed (private video? try --cookies your_cookies.txt)")
     else:
@@ -638,6 +693,12 @@ def _have_faster_whisper() -> bool:
     return importlib.util.find_spec("faster_whisper") is not None
 
 
+# sentinel: the VAD-gated engine ran fine and heard no speech at all
+_NO_SPEECH = "__no_speech__"
+# set by transcribe() so the manifest can say so instead of "(transcription failed)"
+_last_run_no_speech = False
+
+
 def _transcribe_faster_whisper(wav: str, out_dir: str, lang: str | None, model: str) -> str | None:
     """In-process transcription via faster-whisper (CTranslate2) — same output
     files as the CLI path (transcript.txt + transcript.json), several times
@@ -649,14 +710,25 @@ def _transcribe_faster_whisper(wav: str, out_dir: str, lang: str | None, model: 
         return None
     try:
         m = WhisperModel(model, device="auto", compute_type="auto")
-        seg_iter, _info = m.transcribe(wav, language=(lang if lang and lang != "auto" else None))
+        # vad_filter: Silero VAD gates what reaches the model — whisper's classic
+        # hallucination is inventing a caption over music/silence (observed: an 8s
+        # music-only clip yielding "I'll see you next time"). No speech → nothing
+        # to transcribe → nothing to invent. condition_on_previous_text=False cuts
+        # the other failure mode, repetition loops seeded by an earlier bad line.
+        seg_iter, _info = m.transcribe(
+            wav, language=(lang if lang and lang != "auto" else None),
+            vad_filter=True, vad_parameters={"min_silence_duration_ms": 500},
+            condition_on_previous_text=False)
         segs = [{"start": round(s.start, 3), "end": round(s.end, 3), "text": s.text.strip()}
                 for s in seg_iter if s.text.strip()]
     except Exception as e:  # bad model name, OOM, corrupt audio — CLI may still work
         print(f"  ! faster-whisper failed (model={model}): {e}")
         return None
     if not segs:
-        return None
+        # The gate ran and found NO speech — that is a result, not a failure.
+        # Falling back to the ungated CLI here would reintroduce the exact
+        # hallucination this path exists to prevent.
+        return _NO_SPEECH
     _write_transcript_json(out_dir, segs)
     dst = os.path.join(out_dir, "transcript.txt")
     with open(dst, "w", encoding="utf-8") as f:
@@ -679,7 +751,12 @@ def transcribe(video: str, out_dir: str, lang: str | None, model: str = "base") 
     if not os.path.exists(wav):
         return None
     try:
+        global _last_run_no_speech
+        _last_run_no_speech = False
         fast = _transcribe_faster_whisper(wav, out_dir, lang, model)
+        if fast == _NO_SPEECH:
+            _last_run_no_speech = True
+            return None
         if fast:
             return fast
         if not _have("whisper"):
@@ -865,7 +942,9 @@ def process(src: str, out_dir: str, *, scene: float = 0.30, fps_floor: float = 1
         note = "(none — no existing subtitles; install a transcriber: pip install 'claude-real-video[fast]' or pip install openai-whisper)"
     else:
         transcript = transcribe(video, out_dir, lang, model=whisper_model)
-        note = f"{transcript} (transcribed by whisper)" if transcript else "(none — transcription failed)"
+        note = (f"{transcript} (transcribed by whisper)" if transcript else
+                ("(none — the voice-activity gate heard no speech; music/ambient-only audio)"
+                 if _last_run_no_speech else "(none — transcription failed)"))
 
     # Optional speaker diarization (who spoke when): label each transcript
     # segment with SPEAKER_XX so multi-person conversations stay readable.
