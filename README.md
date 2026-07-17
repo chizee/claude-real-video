@@ -132,10 +132,12 @@ ffmpeg -version
 Transcription uses the `whisper` CLI (installed by the `[whisper]` extra, or
 `pip install openai-whisper`). Whisper also relies on ffmpeg.
 
-**Faster transcripts (recommended):** install the `[fast]` extra and crv
-automatically switches to [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
-— same models, same output files, several times faster and lighter on RAM,
-no new flags to learn:
+**Faster + hallucination-proof transcripts (recommended):** install the `[fast]`
+extra and crv automatically switches to
+[faster-whisper](https://github.com/SYSTRAN/faster-whisper) — same models, same
+output files, several times faster, and gated by Silero VAD (voice-activity
+detection): music-only or silent audio yields an honest "no speech" note instead
+of whisper's classic invented caption. No new flags to learn:
 
 ```bash
 pip install 'claude-real-video[fast]'
