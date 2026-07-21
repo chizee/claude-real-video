@@ -28,9 +28,12 @@ def main() -> None:
                          "(without this, a non-empty output dir is refused to avoid mixing videos)")
     ap.add_argument("--scene", type=float, default=0.30,
                     help="Scene-change sensitivity 0-1, lower = more frames (default: 0.30)")
-    ap.add_argument("--fps-floor", type=float, default=1.0,
-                    help="Guarantee at least one frame every N seconds (default: 1.0)")
-    ap.add_argument("--max-frames", type=int, default=150, help="Cap total frames (default: 150)")
+    ap.add_argument("--fps-floor", "--min-frame-interval", dest="fps_floor", type=float, default=1.0,
+                    help="SECONDS PER FRAME, not fps — guarantee at least one frame "
+                         "every N seconds (default: 1.0; --min-frame-interval is an alias)")
+    ap.add_argument("--max-frames", type=int, default=None,
+                    help="Cap total frames (default: auto — scales with duration, "
+                         "clamp(150, seconds*1.5, 600))")
     ap.add_argument("--adaptive", action="store_true",
                     help="Adaptive scene detection: catches slow morphs (2-3s squash/stretch, "
                          "gradual pans) a fixed threshold misses, by comparing each frame "

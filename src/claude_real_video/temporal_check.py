@@ -33,7 +33,7 @@ def temporal_hint(video_path, ffmpeg="ffmpeg"):
             [ffmpeg, "-i", video_path, "-vf",
              "signalstats,metadata=print:key=lavfi.signalstats.YDIF:file=-",
              "-f", "null", "-"],
-            capture_output=True, text=True, timeout=600)
+            capture_output=True, text=True, errors="replace", timeout=600)
         vals = [float(m) for m in re.findall(r"YDIF=([0-9.]+)", proc.stdout)]
     except Exception:
         return None

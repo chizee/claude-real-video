@@ -15,7 +15,9 @@ TRANSCRIPT_END = "--- END UNTRUSTED TRANSCRIPT ---"
 
 
 def _run(cmd: list[str]) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, capture_output=True, text=True)
+    # errors="replace": Latin-1-ish metadata tags crash strict UTF-8 decoding
+    # (2,181-video field report — ~40 videos from one generator all died)
+    return subprocess.run(cmd, capture_output=True, text=True, errors="replace")
 
 
 def _have(tool: str) -> bool:
@@ -315,17 +317,30 @@ def dedup_frames(frames_dir: str, threshold: float = 8, window: int = 4,
     HARD_GATE = 0.4 * GATE    # minimum hard-tolerance score
     BUMP, DECAY = 2.0, 0.7    # cooldown dynamics
 
+    # Action channel: a percentage threshold is structurally blind to a small
+    # subject — a person at 0.5% of the frame can never move 8% of the pixels,
+    # so the one second that matters gets deduplicated away (2,181-video field
+    # report, 2026-07-21). A handful of 32x32 cells changing HARD (>STRONG_TOL)
+    # marks a frame as new no matter the percentage.
+    STRONG_TOL = 45
+    STRONG_MIN = 3
+
     def sigs(path: str):
         # RGB, not grayscale: hues with equal luma (a red→green cut) must not
         # look identical to the comparator
         im = Image.open(path).convert("RGB")
         return (list(im.resize((16, 16)).getdata()),
+                list(im.resize((32, 32)).getdata()),
                 im.resize((FINE, FINE), Image.BOX))
 
     def pct_diff(a: list, b: list, tol: int = 25) -> float:
         changed = sum(max(abs(x[0] - y[0]), abs(x[1] - y[1]), abs(x[2] - y[2])) > tol
                       for x, y in zip(a, b))
         return 100.0 * changed / len(a)
+
+    def strong_cells(a: list, b: list) -> int:
+        return sum(max(abs(x[0] - y[0]), abs(x[1] - y[1]), abs(x[2] - y[2])) > STRONG_TOL
+                   for x, y in zip(a, b))
 
     def strong_mask(a, b, tol):
         # binary mask: max-channel |a-b| > tol (all PIL C ops — this is the hot path)
@@ -362,22 +377,30 @@ def dedup_frames(frames_dir: str, threshold: float = 8, window: int = 4,
     pending = sigs(frames[0]) if frames else None
     kept: list[str] = []
     recent: list[list] = []       # 16x16 signatures of the last `window` kept frames
+    recent_s32: list = []         # matching 32x32 signatures (action channel)
     recent_fine: list = []        # matching 192x192 signatures
     records: list[dict] = []
     mult = 1.0                    # settled-channel cooldown multiplier
     prev_coarse = None
     for idx, f in enumerate(frames):
-        h, fine = pending
+        h, s32, fine = pending
         pending = sigs(frames[idx + 1]) if idx + 1 < len(frames) else None
         dist = min((pct_diff(h, k) for k in recent), default=None)
         keep = dist is None or dist > threshold
         via = "first" if dist is None else ("global" if keep else None)
         settled = None
         if not keep:
+            # action channel: survives only if EVERY windowed frame differs
+            # (by percentage or by hard local change)
+            if all(pct_diff(h, k) > threshold or strong_cells(s32, k32) >= STRONG_MIN
+                   for k, k32 in zip(recent, recent_s32)):
+                keep = True
+                via = "action"
+        if not keep:
             motion = pct_diff(h, prev_coarse) if prev_coarse is not None else 100.0
             last = idx == len(frames) - 1
             if motion < MOTION_CEIL or last:
-                fine_next = pending[1] if pending is not None else None
+                fine_next = pending[2] if pending is not None else None
                 soft = settled_grid(fine, fine_next, recent_fine, SOFT_TOL)
                 settled = max(soft)
                 if settled > GATE * mult:
@@ -395,9 +418,11 @@ def dedup_frames(frames_dir: str, threshold: float = 8, window: int = 4,
         if keep:
             kept.append(f)
             recent.append(h)
+            recent_s32.append(s32)
             recent_fine.append(fine)
             if len(recent) > window:
                 recent.pop(0)
+                recent_s32.pop(0)
                 recent_fine.pop(0)
             records.append({"name": os.path.basename(f), "dist": dist,
                             "settled": settled, "via": via, "kept": True, "t": t})
@@ -898,7 +923,7 @@ def _prepare_out_dir(out_dir: str, overwrite: bool) -> None:
 
 def process(src: str, out_dir: str, *, scene: float = 0.30, fps_floor: float = 1.0,
             adaptive: bool = False, text_anchors: bool = False,
-            max_frames: int = 150, lang: str | None = "auto", cookies: str | None = None,
+            max_frames: int | None = None, lang: str | None = "auto", cookies: str | None = None,
             do_transcribe: bool = True, dedup_threshold: float = 8, dedup_window: int = 4,
             keep_audio: bool = False, report: bool = False, why: str | None = None, whisper_model: str = "base", cookies_from_browser: str | None = None,
             overwrite: bool = False, speakers: bool = False,
@@ -917,6 +942,10 @@ def process(src: str, out_dir: str, *, scene: float = 0.30, fps_floor: float = 1
     frames_dir = os.path.join(out_dir, "frames")
     video = fetch_video(src, out_dir, cookies=cookies, cookies_from_browser=cookies_from_browser)
     dur = _duration(video)
+    if max_frames is None:
+        # flat 150 starved long videos (one frame per 2.3s on a 5:38 video);
+        # scale the default with duration, explicit --max-frames still wins
+        max_frames = int(min(600, max(150, dur * 1.5)))
     anchors = (_text_anchor_frames(_subtitle_cue_times(src, video, out_dir), _fps(video))
                if text_anchors else None)
     extracted, frame_times = (

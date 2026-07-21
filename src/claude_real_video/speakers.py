@@ -91,7 +91,7 @@ def _load_samples(audio_path: str) -> "tuple":
         r = subprocess.run(["ffmpeg", "-y", "-i", audio_path, "-vn",
                             "-ar", "16000", "-ac", "1", wav,
                             "-hide_banner", "-loglevel", "error"],
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, errors="replace")
         if r.returncode != 0 or not os.path.getsize(wav):
             raise RuntimeError(f"ffmpeg could not decode audio from {audio_path}")
         import wave

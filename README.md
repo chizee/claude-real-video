@@ -13,6 +13,13 @@ pip install "claude-real-video[whisper]"
 npx skills add HUANGCHIHHUNGLeo/claude-real-video   # one command, installs the skill into Claude Code, Cursor, Codex, Copilot, Gemini CLI & 50+ agent hosts
 ```
 
+Claude Code plugin marketplace (auto-updates):
+
+```
+/plugin marketplace add HUANGCHIHHUNGLeo/claude-real-video
+/plugin install claude-real-video@claude-real-video
+```
+
 Then paste a video link into your agent and ask about it. (CLI-only use? `crv "<url>"` works with just the pip install.)
 
 > **Naming:** crv is the short name for claude-real-video (the PyPI package). The paid add-on, **crv Pro**, is sold on Capafy under the listing name "llm-real-video Pro".
@@ -84,6 +91,23 @@ crv "https://youtu.be/..." --why "find the pricing strategy" --kb ~/notes
 `--kb` saves the result as a dated note in your own notes folder, so it doesn't die in `crv-out`.
 
 ---
+
+## Measured numbers
+
+Real run on a 3-minute 640x360 video (benchmark/jfk-rice.mp4), Mac mini M4, local CPU, frames + dedup only (`--no-transcribe`). Image tokens estimated with Anthropic's `(width x height) / 750` — 307 tokens/frame at 640x360.
+
+| Mode | Frames kept | Wall time | Est. image tokens |
+|------|------------|-----------|-------------------|
+| default (scene-change + 1s floor) | 170 (from 180 extracted) | 23.5 s | ~52k |
+| `--max-frames 80` | 80 | 23.4 s | ~25k |
+| `--adaptive` (catches slow morphs) | 270 | 36.8 s | ~83k |
+
+**Dedup v0.7.16 — small-subject fast action no longer disappears.** A percentage comparator is structurally blind to a subject that covers <1% of the frame (it can never change 8% of the pixels). Found in a user's 2,181-video batch run; fixed with a third "action channel". Synthetic repro — static 1280x720 shot, a 40x90 px subject (0.4% of frame) moves fast only in the last 10 of 65 frames:
+
+| | Frames kept | Action frames survived |
+|---|---|---|
+| v0.7.15 | 2 | 1 / 10 |
+| v0.7.16 | 11 | **10 / 10** — full trajectory |
 
 ## Why not just sample frames?
 

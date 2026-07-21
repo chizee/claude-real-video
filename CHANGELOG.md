@@ -1,3 +1,13 @@
+## 0.7.16 — 2026-07-21
+
+Batch-hardening, ported from a 2,181-video field report against crv Pro:
+
+- dedup: new "action channel" — a handful of 32x32 cells changing hard (>45/255) marks a frame as new regardless of percentage. Small-in-frame fast action is no longer deduplicated away (synthetic repro: 1/10 action frames survived -> 10/10).
+- all ffprobe/ffmpeg output decoded with errors="replace" — Latin-1-ish metadata no longer crashes a run.
+- --max-frames default now scales with duration: clamp(150, seconds*1.5, 600); explicit value still wins.
+- --min-frame-interval added as an alias of --fps-floor; both help texts now say plainly it is seconds per frame.
+- distribution: Claude Code plugin marketplace support (/plugin marketplace add HUANGCHIHHUNGLeo/claude-real-video).
+
 ## 0.7.8 (2026-07-15)
 - The end-of-run Pro pointer now shows this run's real numbers (deduped visual-change count and changes/min) instead of a generic line — only when the video actually has them; static or very short videos keep the quiet one-liner. Opt out unchanged: `CRV_NO_HINT=1`.
 

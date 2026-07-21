@@ -146,7 +146,7 @@ def _run_job(jid: str, src: str, opts: dict) -> None:
     if not opts.get("transcribe", True):
         cmd.append("--no-transcribe")
     try:
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace")
         for line in p.stdout:
             job["log"] += line
         p.wait()
